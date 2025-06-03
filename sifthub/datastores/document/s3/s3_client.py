@@ -3,19 +3,21 @@ from io import BytesIO
 from typing import Optional
 from datetime import datetime, timedelta
 from sifthub.configs import aws_configs
+from sifthub.configs.constants import EXPORT_FILE_EXPIRY_HOURS
 from sifthub.utils.logger import setup_logger
 
 logger = setup_logger(__name__)
 
+# Module-level session - more efficient than creating per call
+_session = aioboto3.Session()
+
 
 class S3Client:
-    def __init__(self):
-        self.session = aioboto3.Session()
-
+    
     async def upload_file_stream(self, file_stream: BytesIO, key: str, content_type: str = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet") -> bool:
         """Upload file stream to S3 with multipart upload support"""
         try:
-            async with self.session.client(
+            async with _session.client(
                 's3',
                 region_name=aws_configs.AWS_REGION,
                 aws_access_key_id=aws_configs.AWS_ACCESS_KEY_ID,
@@ -104,10 +106,10 @@ class S3Client:
                     pass
             raise e
 
-    async def generate_presigned_url(self, key: str, expiration_hours: int = 24) -> Optional[str]:
+    async def generate_presigned_url(self, key: str, expiration_hours: int = EXPORT_FILE_EXPIRY_HOURS) -> Optional[str]:
         """Generate presigned URL for file download"""
         try:
-            async with self.session.client(
+            async with _session.client(
                 's3',
                 region_name=aws_configs.AWS_REGION,
                 aws_access_key_id=aws_configs.AWS_ACCESS_KEY_ID,

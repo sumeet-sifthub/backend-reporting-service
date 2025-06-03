@@ -8,32 +8,28 @@ from openpyxl.styles import Font, PatternFill, Alignment
 
 from sifthub.reporting.models.export_models import SQSExportMessage
 from sifthub.reporting.services.insights_analytics_client import InsightsAnalyticsClient
+from sifthub.configs.constants import BATCH_SIZE
 from sifthub.utils.logger import setup_logger
 
 logger = setup_logger(__name__)
 
+# Module-level analytics client - more efficient than creating per request
+_analytics_client = InsightsAnalyticsClient()
+
 
 class InsightsFAQExcelGenerator:
-    """Excel generator for insights FAQ reports"""
-    
-    def __init__(self):
-        self.analytics_client = InsightsAnalyticsClient()
-        self.batch_size = 100  # For API pagination
+    # Excel generator for insights FAQ reports
     
     async def generate_excel(self, message: SQSExportMessage) -> Optional[BytesIO]:
-        """Generate Excel file for insights FAQ report"""
+        # Generate Excel file for insights FAQ report
         try:
             logger.info(f"Starting FAQ Excel generation for event: {message.eventId}")
-            
             # Fetch all required data from APIs
             data = await self._fetch_all_data(message)
             if not data:
                 logger.error("Failed to fetch data from analytics APIs")
                 return None
-            
-            # Create Excel workbook
             wb = Workbook()
-            
             # Determine sheet suffix based on filter
             sheet_suffix = self._get_sheet_suffix(message)
             
@@ -59,16 +55,16 @@ class InsightsFAQExcelGenerator:
             return None
     
     async def _fetch_all_data(self, message: SQSExportMessage) -> Optional[Dict[str, Any]]:
-        """Fetch all required data from analytics APIs"""
+        # Fetch all required data from analytics APIs
         try:
             # API 1: Get info cards data
-            info_cards = await self.analytics_client.get_info_cards(message.pageFilter)
+            info_cards = await _analytics_client.get_info_cards(message.pageFilter)
             if not info_cards:
                 logger.error("Failed to fetch info cards data")
                 return None
             
             # API 2: Get category distribution  
-            categories = await self.analytics_client.get_category_distribution(
+            categories = await _analytics_client.get_category_distribution(
                 message.filter, message.pageFilter
             )
             if not categories:
@@ -99,8 +95,8 @@ class InsightsFAQExcelGenerator:
         
         try:
             while True:
-                questions_response = await self.analytics_client.get_top_questions(
-                    message.filter, message.pageFilter, page, self.batch_size
+                questions_response = await _analytics_client.get_top_questions(
+                    message.filter, message.pageFilter, page, BATCH_SIZE
                 )
                 
                 if not questions_response or not questions_response.topQuestions:
@@ -109,7 +105,7 @@ class InsightsFAQExcelGenerator:
                 all_questions.extend([q.dict() for q in questions_response.topQuestions])
                 
                 # If we got less than batch_size, we've reached the end
-                if len(questions_response.topQuestions) < self.batch_size:
+                if len(questions_response.topQuestions) < BATCH_SIZE:
                     break
                 
                 page += 1
@@ -129,7 +125,7 @@ class InsightsFAQExcelGenerator:
         try:
             for category in categories:
                 category_id = category.id
-                subcategory_response = await self.analytics_client.get_subcategory_distribution(
+                subcategory_response = await _analytics_client.get_subcategory_distribution(
                     category_id, message.filter, message.pageFilter
                 )
                 

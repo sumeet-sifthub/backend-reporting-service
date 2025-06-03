@@ -1,0 +1,5 @@
+from sifthub.reporting.delivery_processors.download_processor import DownloadDeliveryProcessor
+from sifthub.reporting.delivery_processors.email_processor import EmailDeliveryProcessor
+
+download_delivery_processor = DownloadDeliveryProcessor()
+email_delivery_processor = EmailDeliveryProcessor() 

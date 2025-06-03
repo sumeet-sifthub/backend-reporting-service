@@ -1,13 +1,14 @@
 from typing import Dict, Any, Optional, List
 from sifthub.utils import httputil
-from sifthub.configs.http_configs import ANALYTICS_SERVICE_HOST
-from sifthub.reporting.models.export_models import (
-    FilterConditions, InfoCardsData, CategoryDistributionResponse, 
+from sifthub.configs.http_configs import (ANALYTICS_SERVICE_HOST, ANALYTICS_CONFIG_GENERATE_INFO_CARD_ENDPOINT,
+    ANALYTICS_CONFIG_GENERATE_CATEGORY_DISTRIBUTION_ENDPOINT, ANALYTICS_CONFIG_GENERATE_SUB_CATEGORY_DISTRIBUTION_ENDPOINT,
+    ANALYTICS_CONFIG_GENERATE_TOP_QUESTION_ENDPOINT)
+from sifthub.reporting.models.export_models import (FilterConditions, InfoCardsData, CategoryDistributionResponse,
     SubCategoryDistributionResponse, TopQuestionsResponse
 )
 from sifthub.utils.logger import setup_logger
 
-logger = setup_logger(__name__)
+logger = setup_logger()
 
 
 class InsightsAnalyticsClient:
@@ -19,17 +20,13 @@ class InsightsAnalyticsClient:
     async def get_info_cards(self, page_filter: Optional[FilterConditions] = None) -> Optional[InfoCardsData]:
         """
         API 1: Fetch info cards data from insights service
-        URL: /api/v1/insights-service/generate-answer/overview/info-cards
         """
         try:
-            endpoint = "/api/v1/insights-service/generate-answer/overview/info-cards"
+            endpoint = ANALYTICS_CONFIG_GENERATE_INFO_CARD_ENDPOINT
             payload = {}
             
             if page_filter:
-                payload["pageFilter"] = {
-                    "conditions": {k: v.dict() for k, v in page_filter.conditions.items()},
-                    "regex": page_filter.regex
-                }
+                payload["pageFilter"] = page_filter.dict()
             
             logger.info(f"Calling info cards API with payload: {payload}")
             response = await httputil.post(self.service_host, endpoint, payload)
@@ -48,23 +45,16 @@ class InsightsAnalyticsClient:
                                       page_filter: Optional[FilterConditions] = None) -> Optional[CategoryDistributionResponse]:
         """
         API 2: Fetch category distribution data from insights service
-        URL: /api/v1/insights-service/generate-answer/overview/category-distribution
         """
         try:
-            endpoint = "/api/v1/insights-service/generate-answer/overview/category-distribution"
+            endpoint = ANALYTICS_CONFIG_GENERATE_CATEGORY_DISTRIBUTION_ENDPOINT
             payload = {}
             
             if filter_conditions:
-                payload["filter"] = {
-                    "conditions": {k: v.dict() for k, v in filter_conditions.conditions.items()},
-                    "regex": filter_conditions.regex
-                }
+                payload["filter"] = filter_conditions.dict()
             
             if page_filter:
-                payload["pageFilter"] = {
-                    "conditions": {k: v.dict() for k, v in page_filter.conditions.items()},
-                    "regex": page_filter.regex
-                }
+                payload["pageFilter"] = page_filter.dict()
             
             logger.info(f"Calling category distribution API with payload: {payload}")
             response = await httputil.post(self.service_host, endpoint, payload)
@@ -84,23 +74,16 @@ class InsightsAnalyticsClient:
                                          page_filter: Optional[FilterConditions] = None) -> Optional[SubCategoryDistributionResponse]:
         """
         API 4: Fetch subcategory distribution data for a specific category
-        URL: /api/v1/insights-service/generate-answer/overview/category/{id}/subcategory-distribution
         """
         try:
-            endpoint = f"/api/v1/insights-service/generate-answer/overview/category/{category_id}/subcategory-distribution"
+            endpoint = ANALYTICS_CONFIG_GENERATE_SUB_CATEGORY_DISTRIBUTION_ENDPOINT.format(category_id=category_id)
             payload = {}
             
             if filter_conditions:
-                payload["filter"] = {
-                    "conditions": {k: v.dict() for k, v in filter_conditions.conditions.items()},
-                    "regex": filter_conditions.regex
-                }
+                payload["filter"] = filter_conditions.dict()
             
             if page_filter:
-                payload["pageFilter"] = {
-                    "conditions": {k: v.dict() for k, v in page_filter.conditions.items()},
-                    "regex": page_filter.regex
-                }
+                payload["pageFilter"] = page_filter.dict()
             
             logger.info(f"Calling subcategory distribution API for category {category_id} with payload: {payload}")
             response = await httputil.post(self.service_host, endpoint, payload)
@@ -120,26 +103,19 @@ class InsightsAnalyticsClient:
                               page: int = 1, page_size: int = 100) -> Optional[TopQuestionsResponse]:
         """
         API 3: Fetch top questions data from insights service
-        URL: /api/v1/insights-service/generate-answer/overview/top-questions/list
         """
         try:
-            endpoint = "/api/v1/insights-service/generate-answer/overview/top-questions/list"
+            endpoint = ANALYTICS_CONFIG_GENERATE_TOP_QUESTION_ENDPOINT
             payload = {
                 "page": page,
                 "pageSize": page_size
             }
             
             if filter_conditions:
-                payload["filter"] = {
-                    "conditions": {k: v.dict() for k, v in filter_conditions.conditions.items()},
-                    "regex": filter_conditions.regex
-                }
+                payload["filter"] = filter_conditions.dict()
             
             if page_filter:
-                payload["pageFilter"] = {
-                    "conditions": {k: v.dict() for k, v in page_filter.conditions.items()},
-                    "regex": page_filter.regex
-                }
+                payload["pageFilter"] = page_filter.dict()
             
             logger.info(f"Calling top questions API (page {page}, size {page_size}) with payload: {payload}")
             response = await httputil.post(self.service_host, endpoint, payload)
@@ -167,15 +143,22 @@ class InsightsAnalyticsClient:
             while True:
                 response = await self.get_top_questions(filter_conditions, page_filter, page, batch_size)
                 if not response or not response.topQuestions:
+                    # No more data available
                     break
                 
-                all_questions.extend([q.dict() for q in response.topQuestions])
+                current_batch = [q.dict() for q in response.topQuestions]
+                all_questions.extend(current_batch)
                 
                 # If we got less than batch_size, we've reached the end
-                if len(response.topQuestions) < batch_size:
+                if len(current_batch) < batch_size:
                     break
                 
                 page += 1
+                
+                # Safety check to prevent infinite loops
+                if page > 1000:  # Reasonable upper limit
+                    logger.warning(f"Reached maximum page limit (1000) while fetching questions")
+                    break
             
             logger.info(f"Fetched {len(all_questions)} total questions across {page-1} pages")
             return all_questions

@@ -1,0 +1,7 @@
+from sifthub.reporting.usage_logs_processors.answer_processor import AnswerProcessor
+from sifthub.reporting.usage_logs_processors.autofill_processor import AutofillProcessor
+from sifthub.reporting.usage_logs_processors.ai_teammate_usage_processor import AITeammateUsageProcessor
+
+answer_processor = AnswerProcessor()
+autofill_processor = AutofillProcessor()
+ai_teammate_usage_processor = AITeammateUsageProcessor() 

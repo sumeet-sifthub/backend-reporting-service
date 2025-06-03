@@ -1,0 +1,3 @@
+from sifthub.reporting.insights_processors.response_generation_processor import ResponseGenerationProcessor
+
+response_generation_processor = ResponseGenerationProcessor() 

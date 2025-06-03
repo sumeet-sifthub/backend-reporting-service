@@ -3,8 +3,8 @@ from typing import Dict, Any, Optional
 from datetime import datetime
 
 from sifthub.reporting.models.export_models import SQSExportMessage, ExportStatus, ReportAuditLog
-from sifthub.reporting.factories.module_factory import ModuleProcessorFactory
-from sifthub.reporting.factories.delivery_factory import DeliveryProcessorFactory
+from sifthub.reporting.factories.module_factory import get_module_processor
+from sifthub.reporting.factories.delivery_factory import get_delivery_processor
 from sifthub.datastores.event.mongo_client import MongoClient
 from sifthub.datastores.product.firebase import Firebase
 from sifthub.configs import mongo_configs, aws_configs
@@ -33,19 +33,18 @@ async def process_export_request(message: SQSExportMessage) -> bool:
             ExportStatus.PROCESSING
         )
         # Create module processor using factory
-        module_processor = ModuleProcessorFactory.create_processor(message.module)
+        module_processor = await get_module_processor(message.module)
         if not module_processor:
-            logger.error(f"No processor found for module: {message.module}")
+            logger.error(f"No processor found for module: {message.module}, event: {message.eventId}")
             await update_audit_log_status(
                 message.eventId, 
                 message.clientId, 
                 ExportStatus.FAILED
             )
             return False
-        # Process the export
         export_file = await module_processor.process_export(message)
         if not export_file:
-            logger.error(f"Export processing failed for event: {message.eventId}")
+            logger.error(f"Export processing failed for event: {message.eventId}, client: {message.clientId}")
             await update_audit_log_status(
                 message.eventId, 
                 message.clientId, 
@@ -53,7 +52,7 @@ async def process_export_request(message: SQSExportMessage) -> bool:
             )
             return False
         # Create delivery processor using factory
-        delivery_processor = DeliveryProcessorFactory.create_processor(message.mode)
+        delivery_processor = await get_delivery_processor(message.mode)
         if not delivery_processor:
             logger.error(f"No delivery processor found for mode: {message.mode}")
             await update_audit_log_status(
@@ -64,7 +63,7 @@ async def process_export_request(message: SQSExportMessage) -> bool:
             return False
         # Get filename from module processor
         filename = module_processor.get_export_filename(message)
-        # Deliver the export
+        # Deliver the export (delivery processor handles its own notifications)
         delivery_result = await delivery_processor.deliver_export(
             export_file, message, filename
         )
@@ -81,13 +80,6 @@ async def process_export_request(message: SQSExportMessage) -> bool:
                 s3_bucket=delivery_result.get("s3_bucket"),
                 download_url=delivery_result.get("download_url")
             )
-            # Send Firebase notification for download mode
-            if message.mode.value == "download":
-                await send_firebase_notification(
-                    message, 
-                    delivery_result.get("download_url", ""),
-                    "SUCCESS"
-                )
             logger.info(f"Export completed successfully for event: {message.eventId}")
             return True
         else:
@@ -96,8 +88,6 @@ async def process_export_request(message: SQSExportMessage) -> bool:
                 message.clientId, 
                 ExportStatus.FAILED
             )
-            # Send failure notification
-            await send_firebase_notification(message, "", "FAILED")
             return False
             
     except Exception as e:
@@ -107,8 +97,6 @@ async def process_export_request(message: SQSExportMessage) -> bool:
             message.clientId, 
             ExportStatus.FAILED
         )
-        # Send failure notification
-        await send_firebase_notification(message, "", "FAILED")
         return False
 
 
@@ -143,27 +131,4 @@ async def update_audit_log_status(event_id: str, client_id: int,
         else:
             logger.warning(f"No audit log found to update for event: {event_id}")
     except Exception as e:
-        logger.error(f"Error updating audit log status: {e}", exc_info=True)
-
-
-async def send_firebase_notification(message: SQSExportMessage, download_url: str, status: str):
-    """Send Firebase notification for export completion using dedicated export notification method"""
-    try:
-        # Get Firebase publisher
-        firebase_publisher = Firebase.get_publisher()
-        
-        # Use the dedicated export notification method
-        success = await firebase_publisher.publish_export_notification(
-            event_id=message.eventId,
-            download_url=download_url,
-            status=status,
-            user_id=message.user_id,  # Convert to int as required by publisher
-            client_id=message.clientId,  # Convert to int as required by publisher
-            product_id=message.productId  # Convert to int as required by publisher
-        )
-        if success:
-            logger.info(f"Firebase export notification sent successfully for event: {message.eventId}")
-        else:
-            logger.warning(f"Failed to send Firebase export notification for event: {message.eventId}, client: {message.clientId}, user: {message.user_id}")
-    except Exception as e:
-        logger.error(f"Error sending Firebase notification: {e}", exc_info=True) 
+        logger.error(f"Error updating audit log status: {e}", exc_info=True) 
