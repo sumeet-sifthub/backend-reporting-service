@@ -2,7 +2,7 @@ import logging
 from collections.abc import MutableMapping
 from typing import Any
 
-from sifthub.etl.configs.app_configs import LOG_LEVEL
+from sifthub.configs.app_config import LOG_LEVEL
 
 
 class IndexAttemptSingleton:

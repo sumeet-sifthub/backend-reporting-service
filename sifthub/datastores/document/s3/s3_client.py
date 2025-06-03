@@ -47,6 +47,7 @@ class S3Client:
 
     async def _multipart_upload(self, s3_client, file_stream: BytesIO, key: str, content_type: str):
         """Perform multipart upload for large files"""
+        upload_id = None
         try:
             # Initiate multipart upload
             response = await s3_client.create_multipart_upload(
@@ -92,22 +93,20 @@ class S3Client:
             
         except Exception as e:
             # Abort multipart upload on error
-            try:
-                await s3_client.abort_multipart_upload(
-                    Bucket=aws_configs.AWS_S3_BUCKET,
-                    Key=key,
-                    UploadId=upload_id #error as variable is not global
-                )
-            except:
-                pass
+            if upload_id:
+                try:
+                    await s3_client.abort_multipart_upload(
+                        Bucket=aws_configs.AWS_S3_BUCKET,
+                        Key=key,
+                        UploadId=upload_id
+                    )
+                except:
+                    pass
             raise e
 
-    async def generate_presigned_url(self, key: str, expiration_hours: Optional[int] = None) -> Optional[str]:
+    async def generate_presigned_url(self, key: str, expiration_hours: int = 24) -> Optional[str]:
         """Generate presigned URL for file download"""
         try:
-            # fetch from constants
-            expiration = expiration_hours or aws_configs.EXPORT_FILE_EXPIRY_HOURS
-            
             async with self.session.client(
                 's3',
                 region_name=aws_configs.AWS_REGION,
@@ -118,10 +117,10 @@ class S3Client:
                 url = await s3_client.generate_presigned_url(
                     'get_object',
                     Params={'Bucket': aws_configs.AWS_S3_BUCKET, 'Key': key},
-                    ExpiresIn=expiration * 3600  # Convert hours to seconds
+                    ExpiresIn=expiration_hours * 3600  # Convert hours to seconds
                 )
                 
-                logger.info(f"Generated presigned URL for {key}, expires in {expiration} hours")
+                logger.info(f"Generated presigned URL for {key}, expires in {expiration_hours} hours")
                 return url
                 
         except Exception as e:

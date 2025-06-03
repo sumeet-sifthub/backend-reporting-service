@@ -64,9 +64,9 @@ class SQSExportMessage(BaseModel):
     module: ExportModule
     type: str
     subType: str
-    user_id: str
-    clientId: str
-    productId: str
+    user_id: int
+    clientId: int
+    productId: int
     filter: Optional[FilterConditions] = None
     pageFilter: Optional[FilterConditions] = None
 

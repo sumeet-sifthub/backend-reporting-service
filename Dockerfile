@@ -8,5 +8,5 @@ RUN pip uninstall -y py
 
 COPY ./sifthub ${LAMBDA_TASK_ROOT}/sifthub
 
-# By default this container does nothing, it is used by api server and background which specify their own CMD
+# Lambda handler for SQS-triggered export processing
 CMD ["sifthub.reporting.event.listener.sqs_listener.handler"]
