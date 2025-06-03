@@ -3,17 +3,15 @@ from typing import Optional
 from sifthub.reporting.delivery_processors.base_delivery_processor import DeliveryProcessor
 from sifthub.reporting.models.export_models import ExportMode
 from sifthub.reporting.delivery_processors import (
-    download_delivery_processor,
-    email_delivery_processor
+    download_delivery_processor
 )
 from sifthub.utils.logger import setup_logger
 
 logger = setup_logger()
 
-# Delivery processor mapping
+# Delivery processor mapping - email flow removed for now
 _processors = {
     ExportMode.DOWNLOAD: download_delivery_processor,
-    ExportMode.EMAIL: email_delivery_processor,
 }
 
 
