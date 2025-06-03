@@ -31,7 +31,8 @@ class InsightsSubType(str, Enum):
 
 
 class UsageLogsSubType(str, Enum):
-    ALL = "all"
+    SUMMARY = "summary"
+    LOGS = "logs"
 
 
 class ExportStatus(str, Enum):
@@ -136,4 +137,111 @@ class SubCategoryDistributionResponse(BaseModel):
 
 
 class TopQuestionsResponse(BaseModel):
-    topQuestions: List[TopQuestionData] 
+    topQuestions: List[TopQuestionData]
+
+
+# UsageLogs Models
+
+class OwnerData(BaseModel):
+    ownerUserFullName: str
+
+
+class SourceData(BaseModel):
+    name: str
+    url: str
+    owner: OwnerData
+    fileMeta: Dict[str, Any]
+    sourceMeta: Dict[str, Any]
+
+
+class CreatedByData(BaseModel):
+    id: str
+    fullName: str
+    username: str
+    active: bool
+
+
+class MetaData(BaseModel):
+    created: int
+    createdBy: CreatedByData
+
+
+class AnswerLogData(BaseModel):
+    id: str
+    question: str
+    answer: Optional[str] = None
+    answersCount: int
+    userInstruction: str
+    sources: List[SourceData]
+    status: str
+    initiatedFrom: str
+    meta: MetaData
+    txConsumed: float
+
+
+class AnswerStatsData(BaseModel):
+    answered: int
+    noInformation: int
+    total: int
+    txConsumed: float
+
+
+class AutofillLogData(BaseModel):
+    id: str
+    question: str
+    answer: Optional[str] = None
+    answersCount: int
+    userInstruction: str
+    sources: List[SourceData]
+    status: str
+    initiatedFrom: str
+    meta: MetaData
+    txConsumed: float
+
+
+class AutofillStatsData(BaseModel):
+    totalRuns: int
+    totalDocuments: int
+    totalQuestions: int
+    totalQuestionsAnswered: int
+    averageResponseTime: float
+
+
+class AITeammateLogData(BaseModel):
+    id: str
+    title: str
+    averageTime: float
+    totalTime: int
+    threadCount: int
+    meta: MetaData
+    txConsumed: float
+
+
+class AITeammateStatsData(BaseModel):
+    threadCount: int
+    averageTime: float
+    txConsumed: float
+
+
+class AnswerListResponse(BaseModel):
+    data: List[AnswerLogData]
+
+
+class AnswerStatsResponse(BaseModel):
+    data: AnswerStatsData
+
+
+class AutofillListResponse(BaseModel):
+    data: List[AutofillLogData]
+
+
+class AutofillStatsResponse(BaseModel):
+    data: AutofillStatsData
+
+
+class AITeammateListResponse(BaseModel):
+    data: List[AITeammateLogData]
+
+
+class AITeammateStatsResponse(BaseModel):
+    data: AITeammateStatsData 

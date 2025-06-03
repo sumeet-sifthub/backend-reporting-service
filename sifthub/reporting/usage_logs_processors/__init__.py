@@ -1,7 +1,11 @@
-from sifthub.reporting.usage_logs_processors.answer_processor import AnswerProcessor
-from sifthub.reporting.usage_logs_processors.autofill_processor import AutofillProcessor
-from sifthub.reporting.usage_logs_processors.ai_teammate_usage_processor import AITeammateUsageProcessor
+from .answer_processor import AnswerUsageLogsProcessor
+from .autofill_processor import AutofillUsageLogsProcessor
+from .ai_teammate_usage_processor import AITeammateUsageLogsProcessor
+from .base_usage_logs_processor import UsageLogsTypeProcessor
 
-answer_processor = AnswerProcessor()
-autofill_processor = AutofillProcessor()
-ai_teammate_usage_processor = AITeammateUsageProcessor() 
+__all__ = [
+    'AnswerUsageLogsProcessor',
+    'AutofillUsageLogsProcessor', 
+    'AITeammateUsageLogsProcessor',
+    'UsageLogsTypeProcessor'
+] 

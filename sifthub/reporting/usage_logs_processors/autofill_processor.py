@@ -1,23 +1,38 @@
-from typing import Optional
+from typing import Optional, Union, Dict
 from io import BytesIO
 
 from sifthub.reporting.usage_logs_processors.base_usage_logs_processor import UsageLogsTypeProcessor
 from sifthub.reporting.models.export_models import SQSExportMessage
+from sifthub.reporting.excel_generators.usage_logs_excel_generator import UsageLogsExcelGenerator
 from sifthub.utils.logger import setup_logger
 
-logger = setup_logger(__name__)
+logger = setup_logger()
 
 
-class AutofillProcessor(UsageLogsTypeProcessor):
-    """Processor for autofill usage logs type"""
+class AutofillUsageLogsProcessor(UsageLogsTypeProcessor):
+    # Processor for Autofill usage logs with streaming batch processing
     
-    async def process_export(self, message: SQSExportMessage) -> Optional[BytesIO]:
-        """Process autofill usage logs export"""
+    async def process_export(self, message: SQSExportMessage) -> Optional[Union[BytesIO, Dict[str, str]]]:
         try:
-            logger.info("Autofill usage logs export processor - placeholder implementation")
-            # TODO: Implement autofill usage logs specific export logic
-            return None
+            logger.info(f"Processing Autofill usage logs export with streaming batches for event: {message.eventId}")
+            
+            generator = UsageLogsExcelGenerator()
+            
+            # Use streaming batch processing following the exact flow:
+            # Fetch Batch 1 → Write to Excel → Stream to S3
+            # Fetch Batch 2 → Append to Excel → Update S3
+            # Continue... → Until Done → Generate URL
+            # Firebase Notification
+            result = await generator.generate_excel_streaming(message)
+            
+            if result:
+                logger.info(f"Successfully generated streaming Autofill usage logs export for event: {message.eventId}")
+                logger.info(f"S3 Key: {result['s3_key']}, Download URL ready for Firebase notification")
+                return result
+            else:
+                logger.error(f"Failed to generate streaming Autofill usage logs export for event: {message.eventId}")
+                return None
                 
         except Exception as e:
-            logger.error(f"Error processing autofill usage logs export: {e}", exc_info=True)
+            logger.error(f"Error processing streaming Autofill usage logs export: {e}", exc_info=True)
             return None 
