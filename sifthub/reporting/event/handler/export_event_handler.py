@@ -112,11 +112,10 @@ async def process_export_request(message: SQSExportMessage) -> bool:
         return False
 
 
-async def update_audit_log_status(event_id: str, client_id: str, 
+async def update_audit_log_status(event_id: str, client_id: int,
                                  status: ExportStatus, total_time: Optional[int] = None,
                                  s3_bucket: Optional[str] = None, 
                                  download_url: Optional[str] = None):
-    """Update audit log status in MongoDB"""
     try:
         # Initialize MongoDB connection
         mongo_client = MongoClient(mongo_configs.MONGODB_CONNECTION_STRING)

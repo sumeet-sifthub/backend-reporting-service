@@ -18,9 +18,13 @@ class Firebase:
     @classmethod
     def initialize(cls) -> None:
         if cls._app is None:
-            # Get Firebase credentials from secrets
+            # Get Firebase credentials from secrets using sync method
             secrets_manager = SecretsManager(region_name=aws_configs.AWS_REGION)
-            service_account_json = secrets_manager.get_secret_string("notifications/internal/FIREBASE")
+            service_account_json = secrets_manager.get_secret_string_sync("notifications/internal/FIREBASE")
+            
+            if service_account_json is None:
+                raise RuntimeError("Failed to retrieve Firebase credentials from secrets manager")
+                
             cred_dict = json.loads(service_account_json)
 
             # Initialize Firebase app
@@ -39,26 +43,17 @@ class Firebase:
     @classmethod
     def get_app(cls) -> App:
         if cls._app is None:
-            raise RuntimeError("Firebase not initialized. Call initialize() first")
+            cls.initialize()
         return cls._app
 
     @classmethod
     def get_firestore(cls) -> AsyncClient:
         if cls._firestore is None:
-            raise RuntimeError("Firebase not initialized. Call initialize() first")
+            cls.initialize()
         return cls._firestore
 
     @classmethod
     def get_publisher(cls) -> FirebasePublisher:
         if cls._publisher is None:
-            raise RuntimeError("Firebase not initialized. Call initialize() first")
+            cls.initialize()
         return cls._publisher
-
-
-# Initialize Firebase during import
-Firebase.initialize()
-
-# Export the instances
-_firebase_app = Firebase.get_app()
-_firestore_client = Firebase.get_firestore()
-firebase_publisher = Firebase.get_publisher()
