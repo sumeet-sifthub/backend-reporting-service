@@ -1,4 +1,4 @@
-from typing import Dict, Any
+from typing import Dict, Any, Union
 from io import BytesIO
 
 from sifthub.reporting.delivery_processors.base_delivery_processor import DeliveryProcessor
@@ -9,11 +9,52 @@ logger = setup_logger()
 
 
 class DownloadDeliveryProcessor(DeliveryProcessor):
-    """Processor for download delivery mode"""
+    """Processor for download delivery mode - supports both legacy and streaming approaches"""
     
-    async def deliver_export(self, file_stream: BytesIO, message: SQSExportMessage, 
+    async def deliver_export(self, export_result: Union[BytesIO, Dict[str, str]], message: SQSExportMessage, 
                            filename: str) -> Dict[str, Any]:
-        """Upload to S3, generate download URL, and send Firebase notification"""
+        """Handle export delivery - supports both BytesIO (legacy) and dict (streaming) inputs"""
+        try:
+            # Check if this is the new streaming result (dict) or legacy BytesIO
+            if isinstance(export_result, dict):
+                return await self._handle_streaming_result(export_result, message)
+            else:
+                return await self._handle_legacy_result(export_result, message, filename)
+                
+        except Exception as e:
+            logger.error(f"Error in download delivery: {e}", exc_info=True)
+            # Send failure notification
+            await self._send_firebase_notification(message, "", "FAILED")
+            return {"success": False, "error": str(e)}
+    
+    async def _handle_streaming_result(self, streaming_result: Dict[str, str], message: SQSExportMessage) -> Dict[str, Any]:
+        """Handle streaming result where file is already on S3"""
+        try:
+            s3_key = streaming_result.get("s3_key")
+            download_url = streaming_result.get("download_url") 
+            s3_bucket = streaming_result.get("s3_bucket")
+            
+            if not all([s3_key, download_url, s3_bucket]):
+                raise Exception("Invalid streaming result - missing required fields")
+            
+            logger.info(f"Processing streaming result for event: {message.eventId}, S3 key: {s3_key}")
+            
+            # Send Firebase notification for successful download
+            await self._send_firebase_notification(message, download_url, "SUCCESS")
+            
+            return {
+                "success": True,
+                "s3_bucket": s3_bucket,
+                "s3_key": s3_key,
+                "download_url": download_url
+            }
+            
+        except Exception as e:
+            logger.error(f"Error handling streaming result: {e}", exc_info=True)
+            raise e
+    
+    async def _handle_legacy_result(self, file_stream: BytesIO, message: SQSExportMessage, filename: str) -> Dict[str, Any]:
+        """Handle legacy BytesIO result - upload to S3 and generate URL"""
         try:
             from sifthub.datastores.document.s3.s3_client import S3Client
             
@@ -38,7 +79,7 @@ class DownloadDeliveryProcessor(DeliveryProcessor):
             if not download_url:
                 raise Exception("Failed to generate presigned URL")
             
-            logger.info(f"Successfully uploaded file to S3 and generated presigned URL for event: {message.eventId}")
+            logger.info(f"Successfully uploaded legacy file to S3 and generated presigned URL for event: {message.eventId}")
             
             # Send Firebase notification for successful download
             await self._send_firebase_notification(message, download_url, "SUCCESS")
@@ -51,10 +92,8 @@ class DownloadDeliveryProcessor(DeliveryProcessor):
             }
             
         except Exception as e:
-            logger.error(f"Error in download delivery: {e}", exc_info=True)
-            # Send failure notification
-            await self._send_firebase_notification(message, "", "FAILED")
-            return {"success": False, "error": str(e)}
+            logger.error(f"Error handling legacy result: {e}", exc_info=True)
+            raise e
     
     async def _send_firebase_notification(self, message: SQSExportMessage, download_url: str, status: str):
         """Send Firebase notification for download completion"""

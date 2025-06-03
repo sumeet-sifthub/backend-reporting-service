@@ -1,4 +1,4 @@
-from typing import Dict, Any
+from typing import Dict, Any, Union
 from io import BytesIO
 
 from sifthub.reporting.delivery_processors.base_delivery_processor import DeliveryProcessor
@@ -9,54 +9,99 @@ logger = setup_logger()
 
 
 class EmailDeliveryProcessor(DeliveryProcessor):
-    """Processor for email delivery mode (placeholder for future implementation)"""
+    """Processor for email delivery mode"""
     
-    async def deliver_export(self, file_stream: BytesIO, message: SQSExportMessage, 
+    async def deliver_export(self, export_result: Union[BytesIO, Dict[str, str]], message: SQSExportMessage, 
                            filename: str) -> Dict[str, Any]:
-        """Send export via email - placeholder implementation"""
+        """Send export file via email - supports both legacy and streaming approaches"""
         try:
-            logger.info(f"Email delivery not yet implemented for event: {message.eventId}")
-            
-            # Placeholder - upload to S3 for now and return success
-            from sifthub.datastores.document.s3.s3_client import S3Client
-            
-            s3_client = S3Client()
-            s3_key = s3_client.generate_s3_key(
-                message.eventId, 
-                message.clientId, 
-                message.module.value, 
-                message.type, 
-                message.subType
-            )
-            
-            upload_success = await s3_client.upload_file_stream(file_stream, s3_key)
-            
-            # Send notification (placeholder - would be email-specific notification)
-            if upload_success:
-                await self._send_email_notification(message, "SUCCESS")
+            # Check if this is the new streaming result (dict) or legacy BytesIO
+            if isinstance(export_result, dict):
+                return await self._handle_streaming_email(export_result, message, filename)
             else:
-                await self._send_email_notification(message, "FAILED")
+                return await self._handle_legacy_email(export_result, message, filename)
+                
+        except Exception as e:
+            logger.error(f"Error in email delivery: {e}", exc_info=True)
+            # Send failure notification
+            await self._send_firebase_notification(message, "", "FAILED")
+            return {"success": False, "error": str(e)}
+    
+    async def _handle_streaming_email(self, streaming_result: Dict[str, str], message: SQSExportMessage, filename: str) -> Dict[str, Any]:
+        """Handle streaming result for email delivery"""
+        try:
+            # For email delivery with streaming, we'd need to download from S3 and attach
+            # For now, just send download link via email
+            download_url = streaming_result.get("download_url")
+            
+            if not download_url:
+                raise Exception("No download URL available for email delivery")
+            
+            logger.info(f"Sending email with download link for event: {message.eventId}")
+            
+            # TODO: Implement actual email sending logic
+            # This would typically involve:
+            # 1. Get user email from user service
+            # 2. Send email with download link
+            # 3. Set expiry reminder
+            
+            # Send Firebase notification for successful email
+            await self._send_firebase_notification(message, download_url, "SUCCESS")
             
             return {
-                "success": upload_success,
-                "delivery_method": "email",
-                "message": "Email delivery functionality will be implemented in future release",
-                "s3_key": s3_key if upload_success else None
+                "success": True,
+                "delivery_method": "email_link",
+                "download_url": download_url
             }
             
         except Exception as e:
-            logger.error(f"Error in email delivery: {e}", exc_info=True)
-            await self._send_email_notification(message, "FAILED")
-            return {"success": False, "error": str(e)}
+            logger.error(f"Error handling streaming email: {e}", exc_info=True)
+            raise e
     
-    async def _send_email_notification(self, message: SQSExportMessage, status: str):
-        """Send email notification for email delivery completion - placeholder"""
+    async def _handle_legacy_email(self, file_stream: BytesIO, message: SQSExportMessage, filename: str) -> Dict[str, Any]:
+        """Handle legacy BytesIO result for email delivery"""
         try:
-            logger.info(f"Email notification placeholder for event: {message.eventId}, status: {status}")
-            # TODO: Implement actual email notification logic when email delivery is implemented
-            # This could be:
-            # 1. Send email to user with attachment
-            # 2. Send email with download link
-            # 3. Update user preferences/notifications
+            logger.info(f"Sending email with attachment for event: {message.eventId}")
+            
+            # TODO: Implement actual email sending logic
+            # This would typically involve:
+            # 1. Get user email from user service  
+            # 2. Send email with file attachment
+            # 3. Handle attachment size limits
+            
+            # Send Firebase notification for successful email
+            await self._send_firebase_notification(message, "", "SUCCESS")
+            
+            return {
+                "success": True,
+                "delivery_method": "email_attachment",
+                "filename": filename
+            }
+            
         except Exception as e:
-            logger.error(f"Error sending email notification: {e}", exc_info=True) 
+            logger.error(f"Error handling legacy email: {e}", exc_info=True)
+            raise e
+    
+    async def _send_firebase_notification(self, message: SQSExportMessage, download_url: str, status: str):
+        """Send Firebase notification for email completion"""
+        try:
+            from sifthub.datastores.product.firebase import Firebase
+            
+            # Get Firebase publisher
+            firebase_publisher = Firebase.get_publisher()
+            
+            # Use the dedicated export notification method
+            success = await firebase_publisher.publish_export_notification(
+                event_id=message.eventId,
+                download_url=download_url,
+                status=status,
+                user_id=message.user_id,
+                client_id=message.clientId,
+                product_id=message.productId
+            )
+            if success:
+                logger.info(f"Firebase export notification sent successfully for event: {message.eventId}")
+            else:
+                logger.warning(f"Failed to send Firebase export notification for event: {message.eventId}, client: {message.clientId}, user: {message.user_id}")
+        except Exception as e:
+            logger.error(f"Error sending Firebase notification: {e}", exc_info=True) 

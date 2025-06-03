@@ -14,6 +14,15 @@ _session = aioboto3.Session()
 
 class S3Client:
     
+    @property
+    def bucket_name(self) -> str:
+        """Get the S3 bucket name"""
+        return aws_configs.AWS_S3_BUCKET
+    
+    async def upload_file(self, file_stream: BytesIO, key: str, content_type: str = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet") -> bool:
+        """Upload file stream to S3 with multipart upload support (alias for upload_file_stream)"""
+        return await self.upload_file_stream(file_stream, key, content_type)
+    
     async def upload_file_stream(self, file_stream: BytesIO, key: str, content_type: str = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet") -> bool:
         """Upload file stream to S3 with multipart upload support"""
         try:
@@ -46,6 +55,37 @@ class S3Client:
         except Exception as e:
             logger.error(f"Failed to upload file to S3: {e}", exc_info=True)
             return False
+
+    async def download_file(self, key: str) -> Optional[BytesIO]:
+        """Download file from S3 and return as BytesIO stream"""
+        try:
+            async with _session.client(
+                's3',
+                region_name=aws_configs.AWS_REGION,
+                aws_access_key_id=aws_configs.AWS_ACCESS_KEY_ID,
+                aws_secret_access_key=aws_configs.AWS_SECRET_ACCESS_KEY
+            ) as s3_client:
+                
+                logger.info(f"Downloading file from S3: {key}")
+                
+                response = await s3_client.get_object(
+                    Bucket=aws_configs.AWS_S3_BUCKET,
+                    Key=key
+                )
+                
+                # Read the file content
+                content = await response['Body'].read()
+                
+                # Create BytesIO stream
+                file_stream = BytesIO(content)
+                file_stream.seek(0)
+                
+                logger.info(f"Successfully downloaded file from S3: {key}, size: {len(content)} bytes")
+                return file_stream
+                
+        except Exception as e:
+            logger.error(f"Failed to download file from S3: {e}", exc_info=True)
+            return None
 
     async def _multipart_upload(self, s3_client, file_stream: BytesIO, key: str, content_type: str):
         """Perform multipart upload for large files"""
