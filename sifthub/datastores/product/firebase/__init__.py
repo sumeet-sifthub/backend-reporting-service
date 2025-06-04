@@ -5,7 +5,7 @@ from google.cloud.firestore_v1 import AsyncClient
 from google.cloud import firestore
 import json
 
-from sifthub.configs import aws_configs
+from sifthub.configs import aws_configs, app_config
 from sifthub.datastores.product.firebase.firebase_publisher import FirebasePublisher
 from sifthub.datastores.product.secrets.secretsManager import SecretsManager
 
@@ -20,7 +20,7 @@ class Firebase:
         if cls._app is None:
             # Get Firebase credentials from secrets using sync method
             secrets_manager = SecretsManager(region_name=aws_configs.AWS_REGION)
-            service_account_json = secrets_manager.get_secret_string_sync("notifications/internal/FIREBASE")
+            service_account_json = secrets_manager.get_secret_string_sync(app_config.FIREBASE_SECRETS_PATH)
             
             if service_account_json is None:
                 raise RuntimeError("Failed to retrieve Firebase credentials from secrets manager")

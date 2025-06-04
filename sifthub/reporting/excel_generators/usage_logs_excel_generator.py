@@ -6,7 +6,7 @@ from openpyxl import Workbook, load_workbook
 from openpyxl.utils import get_column_letter
 from openpyxl.styles import Font, PatternFill, Alignment
 
-from sifthub.reporting.models.export_models import SQSExportMessage
+from sifthub.reporting.models.export_models import SQSExportRequest
 from sifthub.reporting.services.usage_logs_analytics_client import UsageLogsAnalyticsClient
 from sifthub.configs.constants import BATCH_SIZE
 from sifthub.datastores.document.s3.s3_client import S3Client
@@ -22,7 +22,7 @@ _s3_client = S3Client()
 class UsageLogsExcelGenerator:
     # Excel generator implementing true streaming batch processing for UsageLogs
     
-    async def generate_excel_streaming(self, message: SQSExportMessage) -> Optional[Dict[str, str]]:
+    async def generate_excel_streaming(self, message: SQSExportRequest) -> Optional[Dict[str, str]]:
         # Implement the exact flow: Fetch Batch → Write to Excel → Stream to S3 → Repeat
         try:
             logger.info(f"Starting UsageLogs streaming batch processing for event: {message.eventId}, type: {message.type}")
@@ -58,7 +58,7 @@ class UsageLogsExcelGenerator:
             logger.error(f"Error in UsageLogs streaming batch processing: {e}", exc_info=True)
             return None
     
-    async def _initialize_excel_structure(self, message: SQSExportMessage) -> Optional[str]:
+    async def _initialize_excel_structure(self, message: SQSExportRequest) -> Optional[str]:
         # Create initial Excel structure with headers only
         try:
             wb = Workbook()
@@ -98,7 +98,7 @@ class UsageLogsExcelGenerator:
             logger.error(f"Error initializing Excel structure: {e}", exc_info=True)
             return None
     
-    async def _process_all_batches_streaming(self, message: SQSExportMessage, s3_key: str) -> bool:
+    async def _process_all_batches_streaming(self, message: SQSExportRequest, s3_key: str) -> bool:
         # Process all data types in batches: Fetch Batch → Write to Excel → Stream to S3
         try:
             if message.type == "answer":
@@ -116,7 +116,7 @@ class UsageLogsExcelGenerator:
             return False
     
     # Answer processing methods
-    async def _process_answer_batches(self, message: SQSExportMessage, s3_key: str):
+    async def _process_answer_batches(self, message: SQSExportRequest, s3_key: str):
         # Process answer logs and stats
         try:
             logger.info("Processing answer batches")
@@ -137,7 +137,7 @@ class UsageLogsExcelGenerator:
         except Exception as e:
             logger.error(f"Error processing answer batches: {e}", exc_info=True)
     
-    async def _add_answer_logs_batch_to_excel(self, s3_key: str, batch, message: SQSExportMessage):
+    async def _add_answer_logs_batch_to_excel(self, s3_key: str, batch, message: SQSExportRequest):
         # Add answer logs batch to Excel and upload to S3
         try:
             # Download → Modify → Upload cycle
@@ -180,7 +180,7 @@ class UsageLogsExcelGenerator:
         except Exception as e:
             logger.error(f"Error adding answer logs batch to Excel: {e}", exc_info=True)
     
-    async def _add_answer_stats_to_excel(self, s3_key: str, stats, message: SQSExportMessage):
+    async def _add_answer_stats_to_excel(self, s3_key: str, stats, message: SQSExportRequest):
         # Add answer stats to Excel and upload to S3
         try:
             # Download → Modify → Upload cycle
@@ -205,7 +205,7 @@ class UsageLogsExcelGenerator:
             logger.error(f"Error adding answer stats to Excel: {e}", exc_info=True)
     
     # Autofill processing methods
-    async def _process_autofill_batches(self, message: SQSExportMessage, s3_key: str):
+    async def _process_autofill_batches(self, message: SQSExportRequest, s3_key: str):
         # Process autofill logs and stats
         try:
             logger.info("Processing autofill batches")
@@ -226,7 +226,7 @@ class UsageLogsExcelGenerator:
         except Exception as e:
             logger.error(f"Error processing autofill batches: {e}", exc_info=True)
     
-    async def _add_autofill_logs_batch_to_excel(self, s3_key: str, batch, message: SQSExportMessage):
+    async def _add_autofill_logs_batch_to_excel(self, s3_key: str, batch, message: SQSExportRequest):
         # Add autofill logs batch to Excel and upload to S3 (same structure as answer)
         try:
             # Download → Modify → Upload cycle
@@ -269,7 +269,7 @@ class UsageLogsExcelGenerator:
         except Exception as e:
             logger.error(f"Error adding autofill logs batch to Excel: {e}", exc_info=True)
     
-    async def _add_autofill_stats_to_excel(self, s3_key: str, stats, message: SQSExportMessage):
+    async def _add_autofill_stats_to_excel(self, s3_key: str, stats, message: SQSExportRequest):
         # Add autofill stats to Excel and upload to S3
         try:
             # Download → Modify → Upload cycle
@@ -295,7 +295,7 @@ class UsageLogsExcelGenerator:
             logger.error(f"Error adding autofill stats to Excel: {e}", exc_info=True)
     
     # AITeammate processing methods
-    async def _process_aiteammate_batches(self, message: SQSExportMessage, s3_key: str):
+    async def _process_aiteammate_batches(self, message: SQSExportRequest, s3_key: str):
         # Process AITeammate logs and stats
         try:
             logger.info("Processing AITeammate batches")
@@ -316,7 +316,7 @@ class UsageLogsExcelGenerator:
         except Exception as e:
             logger.error(f"Error processing AITeammate batches: {e}", exc_info=True)
     
-    async def _add_aiteammate_logs_batch_to_excel(self, s3_key: str, batch, message: SQSExportMessage):
+    async def _add_aiteammate_logs_batch_to_excel(self, s3_key: str, batch, message: SQSExportRequest):
         # Add AITeammate logs batch to Excel and upload to S3
         try:
             # Download → Modify → Upload cycle
@@ -352,7 +352,7 @@ class UsageLogsExcelGenerator:
         except Exception as e:
             logger.error(f"Error adding AITeammate logs batch to Excel: {e}", exc_info=True)
     
-    async def _add_aiteammate_stats_to_excel(self, s3_key: str, stats, message: SQSExportMessage):
+    async def _add_aiteammate_stats_to_excel(self, s3_key: str, stats, message: SQSExportRequest):
         # Add AITeammate stats to Excel and upload to S3
         try:
             # Download → Modify → Upload cycle
@@ -376,7 +376,7 @@ class UsageLogsExcelGenerator:
             logger.error(f"Error adding AITeammate stats to Excel: {e}", exc_info=True)
     
     # Sheet creation methods
-    def _create_answer_sheet_headers(self, wb: Workbook, message: SQSExportMessage):
+    def _create_answer_sheet_headers(self, wb: Workbook, message: SQSExportRequest):
         # Create Answer sheets with headers
         date_range = self._get_date_range_string(message.pageFilter)
         
@@ -417,7 +417,7 @@ class UsageLogsExcelGenerator:
         ws_summary.cell(row=9, column=1, value="No information found")
         ws_summary.cell(row=10, column=1, value="Transactions consumed")
     
-    def _create_autofill_sheet_headers(self, wb: Workbook, message: SQSExportMessage):
+    def _create_autofill_sheet_headers(self, wb: Workbook, message: SQSExportRequest):
         # Create Autofill sheets with headers (same logs structure as Answer)
         date_range = self._get_date_range_string(message.pageFilter)
         
@@ -459,7 +459,7 @@ class UsageLogsExcelGenerator:
         ws_summary.cell(row=10, column=1, value="Questions answered")
         ws_summary.cell(row=11, column=1, value="Average response time")
     
-    def _create_aiteammate_sheet_headers(self, wb: Workbook, message: SQSExportMessage):
+    def _create_aiteammate_sheet_headers(self, wb: Workbook, message: SQSExportRequest):
         # Create AITeammate sheets with headers (different structure)
         date_range = self._get_date_range_string(message.pageFilter)
         

@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from openpyxl.utils import get_column_letter
-from sifthub.reporting.models.export_models import SQSExportMessage, UsageLogsType
+from sifthub.reporting.models.export_models import SQSExportRequest, UsageLogsType
 from sifthub.utils.logger import setup_logger
 
 logger = setup_logger(__name__)
@@ -24,7 +24,7 @@ class UsageLogsExcelGenerator:
             bottom=Side(style='thin')
         )
 
-    async def generate_excel(self, message: SQSExportMessage) -> Optional[BytesIO]:
+    async def generate_excel(self, message: SQSExportRequest) -> Optional[BytesIO]:
         """Generate Excel file for usage logs export"""
         try:
             logger.info(f"Starting usage logs Excel generation for event: {message.eventId}, type: {message.type}")
@@ -53,7 +53,7 @@ class UsageLogsExcelGenerator:
             logger.error(f"Error generating usage logs Excel: {e}", exc_info=True)
             return None
 
-    async def _fetch_usage_logs_data(self, message: SQSExportMessage) -> Dict[str, Any]:
+    async def _fetch_usage_logs_data(self, message: SQSExportRequest) -> Dict[str, Any]:
         """Fetch usage logs data from APIs"""
         try:
             logger.info(f"Fetching usage logs data for type: {message.type}")
@@ -248,7 +248,7 @@ class UsageLogsExcelGenerator:
             'analytics': {}
         }
 
-    async def _create_summary_sheet(self, data: Dict[str, Any], message: SQSExportMessage):
+    async def _create_summary_sheet(self, data: Dict[str, Any], message: SQSExportRequest):
         """Create summary sheet"""
         try:
             sheet = self.workbook.create_sheet("Summary")
@@ -296,7 +296,7 @@ class UsageLogsExcelGenerator:
         except Exception as e:
             logger.error(f"Error creating summary sheet: {e}", exc_info=True)
 
-    async def _create_detailed_logs_sheet(self, data: Dict[str, Any], message: SQSExportMessage):
+    async def _create_detailed_logs_sheet(self, data: Dict[str, Any], message: SQSExportRequest):
         """Create detailed logs sheet"""
         try:
             sheet = self.workbook.create_sheet("Detailed Logs")
@@ -349,7 +349,7 @@ class UsageLogsExcelGenerator:
         except Exception as e:
             logger.error(f"Error creating detailed logs sheet: {e}", exc_info=True)
 
-    async def _create_analytics_sheet(self, data: Dict[str, Any], message: SQSExportMessage):
+    async def _create_analytics_sheet(self, data: Dict[str, Any], message: SQSExportRequest):
         """Create analytics sheet"""
         try:
             sheet = self.workbook.create_sheet("Analytics")

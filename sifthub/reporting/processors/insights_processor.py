@@ -4,7 +4,7 @@ from datetime import datetime
 
 from sifthub.reporting.factories.insights_type_factory import get_insights_type_processor
 from sifthub.reporting.processors.base_processor import ModuleProcessor
-from sifthub.reporting.models.export_models import SQSExportMessage
+from sifthub.reporting.models.export_models import SQSExportRequest
 from sifthub.utils.logger import setup_logger
 
 logger = setup_logger()
@@ -13,7 +13,7 @@ logger = setup_logger()
 class InsightsProcessor(ModuleProcessor):
     # Processor for INSIGHTS module.
     
-    async def process_export(self, message: SQSExportMessage) -> Optional[BytesIO]:
+    async def process_export(self, message: SQSExportRequest) -> Optional[BytesIO]:
         try:
             # Create processor based on type and subtype
             type_processor = await get_insights_type_processor(message.type, message.subType)
@@ -25,7 +25,7 @@ class InsightsProcessor(ModuleProcessor):
             logger.error(f"Error processing insights export: {e}", exc_info=True)
             return None
     
-    def get_export_filename(self, message: SQSExportMessage) -> str:
+    def get_export_filename(self, message: SQSExportRequest) -> str:
         # Determine sheet name based on filter
         sheet_suffix = self._get_sheet_suffix(message)
         timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
@@ -35,7 +35,7 @@ class InsightsProcessor(ModuleProcessor):
         else:
             return f"Insights_{message.type}_{message.subType}_{timestamp}.xlsx"
     
-    def _get_sheet_suffix(self, message: SQSExportMessage) -> str:
+    def _get_sheet_suffix(self, message: SQSExportRequest) -> str:
         """Get sheet suffix based on filter data"""
         try:
             if message.filter and message.filter.conditions:

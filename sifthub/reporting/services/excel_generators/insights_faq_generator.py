@@ -5,7 +5,7 @@ from openpyxl import Workbook
 from openpyxl.styles import Font, Alignment, PatternFill
 from openpyxl.utils import get_column_letter
 
-from sifthub.reporting.models.export_models import SQSExportMessage, FilterConditions
+from sifthub.reporting.models.export_models import SQSExportRequest, FilterConditions
 from sifthub.reporting.services.insights_api_client import insights_api_client
 from sifthub.utils.logger import setup_logger
 
@@ -21,7 +21,7 @@ class InsightsFAQExcelGenerator:
         self.header_fill = PatternFill(start_color="366092", end_color="366092", fill_type="solid")
         self.header_alignment = Alignment(horizontal="center", vertical="center")
 
-    async def generate_excel(self, message: SQSExportMessage) -> Optional[BytesIO]:
+    async def generate_excel(self, message: SQSExportRequest) -> Optional[BytesIO]:
         """Generate Excel file for insights FAQ export"""
         try:
             logger.info(f"Generating insights FAQ Excel for event: {message.eventId}")
@@ -60,7 +60,7 @@ class InsightsFAQExcelGenerator:
             logger.error(f"Error generating Excel file: {e}", exc_info=True)
             return None
 
-    async def _fetch_data(self, message: SQSExportMessage) -> Optional[Dict[str, Any]]:
+    async def _fetch_data(self, message: SQSExportRequest) -> Optional[Dict[str, Any]]:
         """Fetch all required data from APIs"""
         try:
             # Fetch info cards data

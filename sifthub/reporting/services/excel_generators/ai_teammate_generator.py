@@ -4,7 +4,7 @@ from datetime import datetime
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from openpyxl.utils import get_column_letter
-from sifthub.reporting.models.export_models import SQSExportMessage
+from sifthub.reporting.models.export_models import SQSExportRequest
 from sifthub.reporting.services.insights_api_client import insights_api_client
 from sifthub.utils.logger import setup_logger
 
@@ -25,7 +25,7 @@ class AITeammateExcelGenerator:
             bottom=Side(style='thin')
         )
 
-    async def generate_excel(self, message: SQSExportMessage) -> Optional[BytesIO]:
+    async def generate_excel(self, message: SQSExportRequest) -> Optional[BytesIO]:
         """Generate Excel file for AI teammate export"""
         try:
             logger.info(f"Starting AI teammate Excel generation for event: {message.eventId}")
@@ -55,7 +55,7 @@ class AITeammateExcelGenerator:
             logger.error(f"Error generating AI teammate Excel: {e}", exc_info=True)
             return None
 
-    async def _fetch_ai_teammate_data(self, message: SQSExportMessage) -> Dict[str, Any]:
+    async def _fetch_ai_teammate_data(self, message: SQSExportRequest) -> Dict[str, Any]:
         """Fetch AI teammate data from APIs"""
         try:
             logger.info("Fetching AI teammate data from APIs")
@@ -160,7 +160,7 @@ class AITeammateExcelGenerator:
             logger.error(f"Error fetching AI teammate data: {e}", exc_info=True)
             return {}
 
-    async def _create_ai_overview_sheet(self, data: Dict[str, Any], message: SQSExportMessage):
+    async def _create_ai_overview_sheet(self, data: Dict[str, Any], message: SQSExportRequest):
         """Create AI teammate overview sheet"""
         try:
             sheet = self.workbook.create_sheet("AI Teammate Overview")
@@ -215,7 +215,7 @@ class AITeammateExcelGenerator:
         except Exception as e:
             logger.error(f"Error creating AI teammate overview sheet: {e}", exc_info=True)
 
-    async def _create_interaction_analytics_sheet(self, data: Dict[str, Any], message: SQSExportMessage):
+    async def _create_interaction_analytics_sheet(self, data: Dict[str, Any], message: SQSExportRequest):
         """Create interaction analytics sheet"""
         try:
             sheet = self.workbook.create_sheet("Interaction Analytics")
@@ -259,7 +259,7 @@ class AITeammateExcelGenerator:
         except Exception as e:
             logger.error(f"Error creating interaction analytics sheet: {e}", exc_info=True)
 
-    async def _create_performance_metrics_sheet(self, data: Dict[str, Any], message: SQSExportMessage):
+    async def _create_performance_metrics_sheet(self, data: Dict[str, Any], message: SQSExportRequest):
         """Create performance metrics sheet"""
         try:
             sheet = self.workbook.create_sheet("Performance Metrics")
@@ -303,7 +303,7 @@ class AITeammateExcelGenerator:
         except Exception as e:
             logger.error(f"Error creating performance metrics sheet: {e}", exc_info=True)
 
-    async def _create_user_feedback_sheet(self, data: Dict[str, Any], message: SQSExportMessage):
+    async def _create_user_feedback_sheet(self, data: Dict[str, Any], message: SQSExportRequest):
         """Create user feedback sheet"""
         try:
             sheet = self.workbook.create_sheet("User Feedback")

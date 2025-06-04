@@ -3,7 +3,7 @@ from io import BytesIO
 from datetime import datetime
 
 from sifthub.reporting.processors.base_processor import ModuleProcessor
-from sifthub.reporting.models.export_models import SQSExportMessage
+from sifthub.reporting.models.export_models import SQSExportRequest
 from sifthub.utils.logger import setup_logger
 
 logger = setup_logger(__name__)
@@ -12,7 +12,7 @@ logger = setup_logger(__name__)
 class UsageLogsProcessor(ModuleProcessor):
     """Processor for USAGE_LOGS module with streaming batch processing support"""
     
-    async def process_export(self, message: SQSExportMessage) -> Optional[Union[BytesIO, Dict[str, str]]]:
+    async def process_export(self, message: SQSExportRequest) -> Optional[Union[BytesIO, Dict[str, str]]]:
         """Process usage logs export with streaming support"""
         try:
             from sifthub.reporting.factories.usage_logs_type_factory import get_usage_logs_type_processor
@@ -30,7 +30,7 @@ class UsageLogsProcessor(ModuleProcessor):
             logger.error(f"Error processing usage logs export: {e}", exc_info=True)
             return None
     
-    def get_export_filename(self, message: SQSExportMessage) -> str:
+    def get_export_filename(self, message: SQSExportRequest) -> str:
         """Generate filename for usage logs export based on type and date range"""
         timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
         

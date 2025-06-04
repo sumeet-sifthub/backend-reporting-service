@@ -6,7 +6,7 @@ from openpyxl import Workbook, load_workbook
 from openpyxl.utils import get_column_letter
 from openpyxl.styles import Font, PatternFill, Alignment
 
-from sifthub.reporting.models.export_models import SQSExportMessage
+from sifthub.reporting.models.export_models import SQSExportRequest
 from sifthub.reporting.services.insights_analytics_client import InsightsAnalyticsClient
 from sifthub.configs.constants import BATCH_SIZE
 from sifthub.datastores.document.s3.s3_client import S3Client
@@ -22,11 +22,10 @@ _s3_client = S3Client()
 class InsightsFAQExcelGenerator:
     # Excel generator implementing true streaming batch processing
     
-    async def generate_excel_streaming(self, message: SQSExportMessage) -> Optional[Dict[str, str]]:
+    async def generate_excel_streaming(self, message: SQSExportRequest) -> Optional[Dict[str, str]]:
         # Implement the exact flow: Fetch Batch → Write to Excel → Stream to S3 → Repeat
         try:
             logger.info(f"Starting streaming batch processing for event: {message.eventId}")
-            
             # Step 1: Initialize Excel structure and upload to S3
             s3_key = await self._initialize_excel_structure(message)
             if not s3_key:
@@ -58,7 +57,7 @@ class InsightsFAQExcelGenerator:
             logger.error(f"Error in streaming batch processing: {e}", exc_info=True)
             return None
     
-    async def _initialize_excel_structure(self, message: SQSExportMessage) -> Optional[str]:
+    async def _initialize_excel_structure(self, message: SQSExportRequest) -> Optional[str]:
         # Create initial Excel structure with headers only
         try:
             wb = Workbook()
@@ -92,7 +91,7 @@ class InsightsFAQExcelGenerator:
             logger.error(f"Error initializing Excel structure: {e}", exc_info=True)
             return None
     
-    async def _process_all_batches_streaming(self, message: SQSExportMessage, s3_key: str) -> bool:
+    async def _process_all_batches_streaming(self, message: SQSExportRequest, s3_key: str) -> bool:
         # Process all data types in batches: Fetch Batch → Write to Excel → Stream to S3
         try:
             # Process info cards batches
@@ -114,7 +113,7 @@ class InsightsFAQExcelGenerator:
             logger.error(f"Error processing all batches: {e}", exc_info=True)
             return False
     
-    async def _process_info_cards_batches(self, message: SQSExportMessage, s3_key: str):
+    async def _process_info_cards_batches(self, message: SQSExportRequest, s3_key: str):
         # Process info cards in batches
         try:
             logger.info("Processing info cards batches")
@@ -129,7 +128,7 @@ class InsightsFAQExcelGenerator:
         except Exception as e:
             logger.error(f"Error processing info cards batches: {e}", exc_info=True)
     
-    async def _process_category_batches(self, message: SQSExportMessage, s3_key: str) -> List[str]:
+    async def _process_category_batches(self, message: SQSExportRequest, s3_key: str) -> List[str]:
         # Process category distribution in batches and return category IDs
         category_ids = []
         
@@ -154,7 +153,7 @@ class InsightsFAQExcelGenerator:
             logger.error(f"Error processing category batches: {e}", exc_info=True)
             return []
     
-    async def _process_subcategory_batches(self, message: SQSExportMessage, s3_key: str, category_ids: List[str]):
+    async def _process_subcategory_batches(self, message: SQSExportRequest, s3_key: str, category_ids: List[str]):
         # Process subcategory distribution in batches for each category
         try:
             logger.info(f"Processing subcategory batches for {len(category_ids)} categories")
@@ -170,7 +169,7 @@ class InsightsFAQExcelGenerator:
         except Exception as e:
             logger.error(f"Error processing subcategory batches: {e}", exc_info=True)
     
-    async def _process_questions_batches(self, message: SQSExportMessage, s3_key: str):
+    async def _process_questions_batches(self, message: SQSExportRequest, s3_key: str):
         # Process questions in batches
         try:
             logger.info("Processing questions batches")
@@ -185,7 +184,7 @@ class InsightsFAQExcelGenerator:
         except Exception as e:
             logger.error(f"Error processing questions batches: {e}", exc_info=True)
     
-    async def _add_info_cards_batch_to_excel(self, s3_key: str, batch, message: SQSExportMessage):
+    async def _add_info_cards_batch_to_excel(self, s3_key: str, batch, message: SQSExportRequest):
         # Add info cards batch to Excel and upload to S3
         try:
             # Download → Modify → Upload cycle
@@ -204,7 +203,7 @@ class InsightsFAQExcelGenerator:
         except Exception as e:
             logger.error(f"Error adding info cards batch to Excel: {e}", exc_info=True)
     
-    async def _add_category_batch_to_excel(self, s3_key: str, batch, message: SQSExportMessage):
+    async def _add_category_batch_to_excel(self, s3_key: str, batch, message: SQSExportRequest):
         # Add category batch to Excel and upload to S3
         try:
             # Download → Modify → Upload cycle
@@ -240,7 +239,7 @@ class InsightsFAQExcelGenerator:
         except Exception as e:
             logger.error(f"Error adding category batch to Excel: {e}", exc_info=True)
     
-    async def _add_subcategory_batch_to_excel(self, s3_key: str, batch, message: SQSExportMessage, category_id: str):
+    async def _add_subcategory_batch_to_excel(self, s3_key: str, batch, message: SQSExportRequest, category_id: str):
         # Add subcategory batch to Excel and upload to S3
         try:
             # Download → Modify → Upload cycle
@@ -275,7 +274,7 @@ class InsightsFAQExcelGenerator:
         except Exception as e:
             logger.error(f"Error adding subcategory batch to Excel: {e}", exc_info=True)
     
-    async def _add_questions_batch_to_excel(self, s3_key: str, batch, message: SQSExportMessage):
+    async def _add_questions_batch_to_excel(self, s3_key: str, batch, message: SQSExportRequest):
         # Add questions batch to Excel and upload to S3
         try:
             # Download → Modify → Upload cycle
@@ -304,7 +303,7 @@ class InsightsFAQExcelGenerator:
         except Exception as e:
             logger.error(f"Error adding questions batch to Excel: {e}", exc_info=True)
     
-    def _create_sheet_headers(self, wb: Workbook, sheet_type: str, sheet_suffix: str, message: SQSExportMessage):
+    def _create_sheet_headers(self, wb: Workbook, sheet_type: str, sheet_suffix: str, message: SQSExportRequest):
         # Create sheet with headers only
         ws = wb.create_sheet(f"{sheet_type} - {sheet_suffix}")
         
@@ -358,7 +357,7 @@ class InsightsFAQExcelGenerator:
             row += 1
         return row
     
-    def _get_sheet_suffix(self, message: SQSExportMessage) -> str:
+    def _get_sheet_suffix(self, message: SQSExportRequest) -> str:
         # Get sheet suffix based on filter data
         try:
             if message.filter and message.filter.conditions:

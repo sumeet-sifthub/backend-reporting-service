@@ -12,7 +12,6 @@ class SecretsManager:
         self._client = None
 
     def get_secret_string_sync(self, secret_name: str) -> Optional[str]:
-        """Synchronous version of get_secret_string"""
         try:
             response = self.session.client(
                     service_name="secretsmanager",
@@ -25,7 +24,6 @@ class SecretsManager:
             return None
 
     async def get_secret_string(self, secret_name: str) -> Optional[str]:
-        """Async version of get_secret_string"""
         try:
             loop = asyncio.get_event_loop()
             return await loop.run_in_executor(None, self._get_secret_sync, secret_name)
@@ -34,7 +32,6 @@ class SecretsManager:
             return None
 
     def _get_secret_sync(self, secret_name: str) -> Optional[str]:
-        """Synchronous helper for getting secrets"""
         try:
             response = self.session.client(
                     service_name="secretsmanager",

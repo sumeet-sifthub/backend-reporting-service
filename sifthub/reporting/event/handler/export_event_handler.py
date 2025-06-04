@@ -2,10 +2,10 @@ import time
 from typing import Dict, Any, Optional
 from datetime import datetime
 
-from sifthub.reporting.models.export_models import SQSExportMessage, ExportStatus, ReportAuditLog
+from sifthub.reporting.models.export_models import SQSExportRequest, ExportStatus, ReportAuditLog
 from sifthub.reporting.factories.module_factory import get_module_processor
 from sifthub.reporting.factories.delivery_factory import get_delivery_processor
-from sifthub.datastores.event.mongo_client import MongoClient
+from sifthub.datastores.event.mongo.client.mongo_client import MongoDBClient
 from sifthub.datastores.product.firebase import Firebase
 from sifthub.configs import mongo_configs, aws_configs
 from sifthub.utils.logger import setup_logger
@@ -15,7 +15,7 @@ logger = setup_logger(__name__)
 
 async def handle_event(event_context: Dict[str, Any], event_type: str) -> bool:
     try:
-        export_message = SQSExportMessage(**event_context)
+        export_message = SQSExportRequest(**event_context)
         logger.info(f"Processing export request for event: {export_message.eventId}")
         return await process_export_request(export_message)
     except Exception as e:
@@ -23,7 +23,7 @@ async def handle_event(event_context: Dict[str, Any], event_type: str) -> bool:
         return False
 
 
-async def process_export_request(message: SQSExportMessage) -> bool:
+async def process_export_request(message: SQSExportRequest) -> bool:
     start_time = time.time()
     try:
         # Update status to processing
@@ -68,15 +68,11 @@ async def process_export_request(message: SQSExportMessage) -> bool:
             export_file, message, filename
         )
         if delivery_result.get("success"):
-            # Calculate total time in seconds
-            total_time = int(time.time() - start_time)
-            
             # Update status to success
             await update_audit_log_status(
                 message.eventId,
                 message.clientId,
                 ExportStatus.SUCCESS,
-                total_time=total_time,
                 s3_bucket=delivery_result.get("s3_bucket"),
                 download_url=delivery_result.get("download_url")
             )
@@ -106,17 +102,13 @@ async def update_audit_log_status(event_id: str, client_id: int,
                                  download_url: Optional[str] = None):
     try:
         # Initialize MongoDB connection
-        mongo_client = MongoClient(mongo_configs.MONGODB_CONNECTION_STRING)
+        mongo_client = MongoDBClient(mongo_configs.MONGODB_CONNECTION_STRING)
         db = mongo_client.connect(mongo_configs.MONGODB_DATABASE_NAME)
         audit_log_collection = db.get_collection("report_audit_log")
-        
         update_data = {
             "status": status.value,
             "updated_at": datetime.utcnow()
         }
-        
-        if total_time is not None:
-            update_data["total_time"] = total_time
         if s3_bucket:
             update_data["s3_bucket"] = s3_bucket
         if download_url:

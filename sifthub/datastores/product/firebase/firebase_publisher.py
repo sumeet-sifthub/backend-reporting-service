@@ -10,7 +10,6 @@ T = TypeVar('T')
 
 
 class FirebasePublisher:
-    FIREBASE_SVC_SECRETS = "notifications/internal/FIREBASE"
 
     def __init__(self, firestore_client: AsyncClient):
         self.firestore: AsyncClient = firestore_client
@@ -43,7 +42,6 @@ class FirebasePublisher:
 
     async def publish_export_notification(self, event_id: str, download_url: str, status: str,
                                         user_id: int, client_id: int, product_id: int) -> bool:
-        """Publish export completion notification to Firebase"""
         notification_data = {
             "eventId": event_id,
             "type": "EXPORT_COMPLETE",

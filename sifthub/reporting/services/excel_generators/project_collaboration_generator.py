@@ -4,7 +4,7 @@ from datetime import datetime
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from openpyxl.utils import get_column_letter
-from sifthub.reporting.models.export_models import SQSExportMessage
+from sifthub.reporting.models.export_models import SQSExportRequest
 from sifthub.reporting.services.insights_api_client import insights_api_client
 from sifthub.utils.logger import setup_logger
 
@@ -25,7 +25,7 @@ class ProjectCollaborationExcelGenerator:
             bottom=Side(style='thin')
         )
 
-    async def generate_excel(self, message: SQSExportMessage) -> Optional[BytesIO]:
+    async def generate_excel(self, message: SQSExportRequest) -> Optional[BytesIO]:
         """Generate Excel file for project collaboration export"""
         try:
             logger.info(f"Starting project collaboration Excel generation for event: {message.eventId}")
@@ -54,7 +54,7 @@ class ProjectCollaborationExcelGenerator:
             logger.error(f"Error generating project collaboration Excel: {e}", exc_info=True)
             return None
 
-    async def _fetch_collaboration_data(self, message: SQSExportMessage) -> Dict[str, Any]:
+    async def _fetch_collaboration_data(self, message: SQSExportRequest) -> Dict[str, Any]:
         """Fetch project collaboration data from APIs"""
         try:
             logger.info("Fetching project collaboration data from APIs")
@@ -126,7 +126,7 @@ class ProjectCollaborationExcelGenerator:
             logger.error(f"Error fetching project collaboration data: {e}", exc_info=True)
             return {}
 
-    async def _create_collaboration_overview_sheet(self, data: Dict[str, Any], message: SQSExportMessage):
+    async def _create_collaboration_overview_sheet(self, data: Dict[str, Any], message: SQSExportRequest):
         """Create collaboration overview sheet"""
         try:
             sheet = self.workbook.create_sheet("Collaboration Overview")
@@ -180,7 +180,7 @@ class ProjectCollaborationExcelGenerator:
         except Exception as e:
             logger.error(f"Error creating collaboration overview sheet: {e}", exc_info=True)
 
-    async def _create_team_activity_sheet(self, data: Dict[str, Any], message: SQSExportMessage):
+    async def _create_team_activity_sheet(self, data: Dict[str, Any], message: SQSExportRequest):
         """Create team activity sheet"""
         try:
             sheet = self.workbook.create_sheet("Team Activity")
@@ -225,7 +225,7 @@ class ProjectCollaborationExcelGenerator:
         except Exception as e:
             logger.error(f"Error creating team activity sheet: {e}", exc_info=True)
 
-    async def _create_project_metrics_sheet(self, data: Dict[str, Any], message: SQSExportMessage):
+    async def _create_project_metrics_sheet(self, data: Dict[str, Any], message: SQSExportRequest):
         """Create project metrics sheet"""
         try:
             sheet = self.workbook.create_sheet("Project Metrics")

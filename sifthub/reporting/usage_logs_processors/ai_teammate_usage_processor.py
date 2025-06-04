@@ -2,7 +2,7 @@ from typing import Optional, Union, Dict
 from io import BytesIO
 
 from sifthub.reporting.usage_logs_processors.base_usage_logs_processor import UsageLogsTypeProcessor
-from sifthub.reporting.models.export_models import SQSExportMessage
+from sifthub.reporting.models.export_models import SQSExportRequest
 from sifthub.reporting.excel_generators.usage_logs_excel_generator import UsageLogsExcelGenerator
 from sifthub.utils.logger import setup_logger
 
@@ -12,7 +12,7 @@ logger = setup_logger()
 class AITeammateUsageLogsProcessor(UsageLogsTypeProcessor):
     # Processor for AITeammate usage logs with streaming batch processing
     
-    async def process_export(self, message: SQSExportMessage) -> Optional[Union[BytesIO, Dict[str, str]]]:
+    async def process_export(self, message: SQSExportRequest) -> Optional[Union[BytesIO, Dict[str, str]]]:
         try:
             logger.info(f"Processing AITeammate usage logs export with streaming batches for event: {message.eventId}")
             

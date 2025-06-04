@@ -2,7 +2,7 @@ from typing import Optional, Union, Dict
 from io import BytesIO
 
 from sifthub.reporting.insights_processors.base_insights_processor import InsightsTypeProcessor
-from sifthub.reporting.models.export_models import SQSExportMessage
+from sifthub.reporting.models.export_models import SQSExportRequest
 from sifthub.reporting.excel_generators.insights_faq_excel_generator import InsightsFAQExcelGenerator
 from sifthub.utils.logger import setup_logger
 
@@ -12,7 +12,7 @@ logger = setup_logger()
 class ResponseGenerationProcessor(InsightsTypeProcessor):
     # Processor for response generation insights with streaming batch processing
     
-    async def process_export(self, message: SQSExportMessage) -> Optional[Union[BytesIO, Dict[str, str]]]:
+    async def process_export(self, message: SQSExportRequest) -> Optional[Union[BytesIO, Dict[str, str]]]:
         try:
             if message.subType == "frequentAskedQuestions":
                 return await self._process_faq_export(message)
@@ -23,7 +23,7 @@ class ResponseGenerationProcessor(InsightsTypeProcessor):
             logger.error(f"Error in response generation processor: {e}", exc_info=True)
             return None
     
-    async def _process_faq_export(self, message: SQSExportMessage) -> Optional[Dict[str, str]]:
+    async def _process_faq_export(self, message: SQSExportRequest) -> Optional[Dict[str, str]]:
         # Process FAQ export using streaming batch processing: Fetch Batch → Write to Excel → Stream to S3
         try:
             logger.info(f"Processing FAQ export with streaming batches for event: {message.eventId}")

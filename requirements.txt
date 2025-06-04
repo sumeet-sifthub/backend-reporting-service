@@ -29,4 +29,4 @@ tenacity~=8.4.1
 mistune==3.0.2
 pymupdf4llm==0.0.17
 firebase-admin==6.2.0
-google-cloud-firestore==2.11.1 
+google-cloud-firestore==2.20.0

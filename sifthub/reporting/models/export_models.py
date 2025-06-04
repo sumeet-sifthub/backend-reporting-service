@@ -59,7 +59,7 @@ class ExportFilter(BaseModel):
     pageFilter: Optional[FilterConditions] = None
 
 
-class SQSExportMessage(BaseModel):
+class SQSExportRequest(BaseModel):
     eventId: str
     mode: ExportMode
     module: ExportModule
